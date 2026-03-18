@@ -111,7 +111,7 @@ def fetch_entsoe_in_chunks(client, country_code, start, end):
     return df_load
 
 def run_ingestion():
-    CONFIG_PATH = os.path.join("deployment", "config.yaml")
+    CONFIG_PATH = os.path.join("src", "deployment", "config.yaml")
     OUTPUT_PATH = "data/processed/features.parquet"
     
     # 🎯 CAMBIO DE SEGURIDAD MLOps:
