@@ -11,3 +11,4 @@ plotly==5.18.0
 requests==2.31.0
 huggingface_hub==0.20.3
 entsoe-py==0.6.3
+utilsforecast
