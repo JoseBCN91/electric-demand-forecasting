@@ -1,0 +1,45 @@
+name: Entranamiento Diario (MLOps)
+
+on:
+  # 🕒 Ejecutar todos los días a las 02:00 AM (UTC)
+  schedule:
+    - cron: '0 2 * * *'
+  # 🔘 Permite ejecutarlo a mano dándole a un botón en GitHub
+  workflow_dispatch:
+
+jobs:
+  train-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar el repositorio
+        uses: actions/checkout@v3
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip' # Acelera la instalación guardando las librerías en caché
+
+      - name: 📦 Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: ⚙️ Ejecutar Pipeline Completo
+        env:
+          # Si tus scripts de ingesta necesitan contraseñas/APIs, ponlas aquí
+          # ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }} 
+          PYTHONPATH: src
+        run: |
+          echo "1. Descargando datos recientes..."
+          # Reemplaza 'tu_script_ingesta.py' por el nombre real de tu archivo
+          python src/data_ingestion/tu_script_ingesta.py
+          
+          echo "2. Procesando datos..."
+          python src/data_processing/tu_script_procesado.py
+          
+          echo "3. Entrenando modelo CatBoost..."
+          python src/training/train.py
+
+      - name: 🚀 Enviar Modelo a Hugging Face
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: python src/utils/upload_to_hf.py
