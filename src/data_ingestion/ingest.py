@@ -114,18 +114,27 @@ def run_ingestion():
     CONFIG_PATH = os.path.join("deployment", "config.yaml")
     OUTPUT_PATH = "data/processed/features.parquet"
     
-    if not os.path.exists(CONFIG_PATH):
-        print(f"❌ Error: No se encuentra {CONFIG_PATH}")
-        return
-
-    with open(CONFIG_PATH, "r") as f:
-        config = yaml.safe_load(f)
+    # 🎯 CAMBIO DE SEGURIDAD MLOps:
+    # 1. Intentar leer desde variables de entorno (Para GitHub Actions)
+    api_key = os.environ.get("ENTSOE_API_KEY")
     
-    api_key = config.get('entsoe_api_key')
+    # 2. Si no existe en entorno, intentar leer del archivo yaml (Para tu PC local)
     if not api_key:
-        print("❌ Error: API key de ENTSO-E no encontrada")
+        print("ℹ️ Clave no encontrada en entorno. Buscando en config.yaml...")
+        if os.path.exists(CONFIG_PATH):
+            with open(CONFIG_PATH, "r") as f:
+                config = yaml.safe_load(f)
+                api_key = config.get('entsoe_api_key')
+        else:
+            print(f"❌ Error: No se encuentra {CONFIG_PATH} ni la variable de entorno ENTSOE_API_KEY")
+            return
+
+    # Si después de intentar ambos métodos no hay clave, abortamos
+    if not api_key or api_key == "USE_ENV_VARIABLE":
+        print("❌ Error: API key de ENTSO-E no encontrada o es inválida.")
         return
 
+    # A partir de aquí, el código sigue igual
     client = EntsoePandasClient(api_key=api_key)
     
     # 🎯 CAMBIO: 2 AÑOS DE DATOS (Terminando hace 3 días por la API histórica de clima)
@@ -180,6 +189,5 @@ def run_ingestion():
         print(f"📊 Dataset final contiene {len(df_final)} registros (~17.500 horas por país).")
     else:
         print("\n❌ Error crítico: No se pudieron descargar datos.")
-
 if __name__ == "__main__":
     run_ingestion()
