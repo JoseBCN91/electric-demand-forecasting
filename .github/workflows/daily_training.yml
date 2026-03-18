@@ -31,10 +31,10 @@ jobs:
         run: |
           echo "1. Descargando datos recientes..."
           # Reemplaza 'tu_script_ingesta.py' por el nombre real de tu archivo
-          python src/data_ingestion/tu_script_ingesta.py
+          python src/data_ingestion/ingest.py
           
           echo "2. Procesando datos..."
-          python src/data_processing/tu_script_procesado.py
+          python src/data_processing/process.py
           
           echo "3. Entrenando modelo CatBoost..."
           python src/training/train.py
