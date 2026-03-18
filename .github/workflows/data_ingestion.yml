@@ -1,0 +1,40 @@
+name: 📊 Ingesta Diaria de Datos
+
+on:
+  schedule:
+    - cron: '0 2 * * *' # 02:00 AM UTC
+  workflow_dispatch: # Botón manual
+
+jobs:
+  ingest-and-process:
+    runs-on: ubuntu-latest
+    steps:
+      - name: 📥 Clonar repositorio
+        uses: actions/checkout@v3
+
+      - name: 🐍 Configurar Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+
+      - name: 📦 Instalar dependencias
+        run: pip install -r requirements.txt
+
+      - name: ⚙️ Ejecutar Ingesta y Procesamiento
+        env:
+          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
+          PYTHONPATH: src
+        run: |
+          echo "Descargando datos..."
+          python src/data_ingestion/ingest.py
+          echo "Procesando features..."
+          python src/data_processing/process.py
+
+      - name: 🚀 Subir datos procesados al Space
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Usamos un script de python simple para subir los archivos .parquet
+          # Esto disparará el reinicio del Space automáticamente
+          python src/utils/upload_to_hf.py
