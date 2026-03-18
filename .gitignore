@@ -1,0 +1,16 @@
+# Entornos virtuales
+.venv/
+env/
+
+# Caché y archivos compilados
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# Datos crudos (solo subimos los procesados para predicción)
+data/raw/
+
+# Logs y configuración del editor
+catboost_info/
+.vscode/
+.DS_Store

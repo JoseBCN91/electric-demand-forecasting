@@ -1,0 +1,10 @@
+mlflow==3.10.1
+catboost==1.2.10
+cloudpickle==3.1.2
+mlforecast==1.0.31
+numba==0.59.1
+numpy==1.26.4
+pandas==2.3.3
+pyarrow==23.0.1
+scikit-learn==1.8.0
+scipy==1.15.3
