@@ -1,20 +1,24 @@
-name: Sync to Hugging Face hub
+name: 🔄 Sync Código a Hugging Face
 on:
   push:
     branches: [main]
-  # Permite ejecutar este flujo manualmente desde la pestaña Actions
+    # Opcional: Evitar que se active cuando el Bot sube datos
+    paths-ignore:
+      - 'data/**'
   workflow_dispatch:
 
 jobs:
-  sync-to-hub:
+  sync-code:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
         with:
           fetch-depth: 0
           lfs: true
-      - name: Push to hub
+
+      - name: 🚢 Push Code to Hub
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        # Aquí está tu ruta exacta con tu usuario y tu Space
-        run: git push --force https://Jose91-BCN:$HF_TOKEN@huggingface.co/spaces/Jose91-BCN/Electricity_demand main
+        run: |
+          # Reemplaza con tu usuario y nombre del Space exactos
+          git push --force https://Jose91-BCN:$HF_TOKEN@huggingface.co/spaces/Jose91-BCN/Electricity_demand main
