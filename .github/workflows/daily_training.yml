@@ -18,19 +18,18 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: '3.10'
-          cache: 'pip' # Acelera la instalación guardando las librerías en caché
+          cache: 'pip'
 
       - name: 📦 Instalar dependencias
         run: pip install -r requirements.txt
 
       - name: ⚙️ Ejecutar Pipeline Completo
         env:
-          # Si tus scripts de ingesta necesitan contraseñas/APIs, ponlas aquí
-          # ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }} 
+          # 🎯 ¡Aquí está el cambio! Ya no tiene el '#' al principio
+          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }} 
           PYTHONPATH: src
         run: |
           echo "1. Descargando datos recientes..."
-          # Reemplaza 'tu_script_ingesta.py' por el nombre real de tu archivo
           python src/data_ingestion/ingest.py
           
           echo "2. Procesando datos..."
