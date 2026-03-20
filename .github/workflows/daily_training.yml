@@ -1,10 +1,8 @@
-name: Entranamiento Diario (MLOps)
+name: Entrenamiento Diario (MLOps)
 
 on:
-  # 🕒 Ejecutar todos los días a las 02:00 AM (UTC)
   schedule:
     - cron: '0 2 * * *'
-  # 🔘 Permite ejecutarlo a mano dándole a un botón en GitHub
   workflow_dispatch:
 
 jobs:
@@ -23,11 +21,18 @@ jobs:
       - name: 📦 Instalar dependencias
         run: pip install -r requirements.txt
 
+      # 🎯 NUEVO: Creamos el archivo de credenciales de Google al vuelo
+      - name: 🔐 Configurar Credenciales GCP
+        run: |
+          echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > credenciales-gcp.json
+
       - name: ⚙️ Ejecutar Pipeline Completo
         env:
-          # 🎯 ¡Aquí está el cambio! Ya no tiene el '#' al principio
           ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }} 
           PYTHONPATH: src
+          # 🎯 NUEVO: Le decimos a Python dónde está la llave de Google y el Bucket
+          GOOGLE_APPLICATION_CREDENTIALS: credenciales-gcp.json
+          MODEL_BUCKET_NAME: electric-demand-models-bucket
         run: |
           echo "1. Descargando datos recientes..."
           python src/data_ingestion/ingest.py
