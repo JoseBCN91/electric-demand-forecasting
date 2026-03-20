@@ -31,10 +31,27 @@ jobs:
           echo "Procesando features..."
           python src/data_processing/process.py
 
-      - name: 🚀 Subir datos procesados al Space
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      # 🎯 NUEVO: Autenticación segura con Google Cloud
+      - name: 🔐 Configurar Credenciales GCP
         run: |
-          # Usamos un script de python simple para subir los archivos .parquet
-          # Esto disparará el reinicio del Space automáticamente
-          python src/utils/upload_to_hf.py
+          echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > credenciales-gcp.json
+
+      # 🎯 NUEVO: Subida al Bucket de Google en lugar de HF
+      - name: ☁️ Subir datos procesados a GCP
+        env:
+          GOOGLE_APPLICATION_CREDENTIALS: credenciales-gcp.json
+        run: |
+          echo "Subiendo dataset procesado a GCP Storage..."
+          # Autenticamos al "robot"
+          gcloud auth activate-service-account --key-file=credenciales-gcp.json
+          
+          # Copiamos el archivo al bucket
+          gcloud storage cp data/processed/features_clean.parquet gs://electric-demand-models-bucket/data/features_clean.parquet
+          
+          echo "✅ ¡Datos listos en Google Cloud para el entrenamiento!"
+
+      # Opcional: Si por algún motivo aún necesitas subir algo a HF, puedes dejar el paso anterior
+      # - name: 🚀 Subir datos procesados al Space
+      #   env:
+      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      #   run: python src/utils/upload_to_hf.py
