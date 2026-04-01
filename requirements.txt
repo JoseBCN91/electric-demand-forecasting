@@ -14,3 +14,11 @@ entsoe-py==0.6.3
 utilsforecast
 joblib
 google-cloud-storage
+gcsfs
+
+# Testing & Development
+pytest==7.4.3
+pytest-asyncio==0.21.1
+httpx==0.25.2
+python-multipart==0.0.6
+pydantic==2.6.0
