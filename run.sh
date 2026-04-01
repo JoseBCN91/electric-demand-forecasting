@@ -1,36 +1,64 @@
 #!/bin/bash
 
-# =================================================================
-# ORQUESTADOR DE DESPLIEGUE - HUGGING FACE SPACES (16GB RAM)
-# =================================================================
+set -e  # Exit on error
 
-# Salir inmediatamente si un comando falla
-set -e
+echo "================================"
+echo "🚀 Production Startup"
+echo "================================"
 
-echo "----------------------------------------------------------"
-echo "🧠 PASO 1: Iniciando Entrenamiento del Modelo (CatBoost)"
-echo "----------------------------------------------------------"
-# Ejecutamos el entrenamiento. 
-# Esto usará los 16GB de RAM del Space para procesar los .parquet
-# y generará el 'mlflow.db' y los artefactos del modelo.
-python -m src.training.train
+# Verify Python version
+echo "🐍 Python version:"
+python --version
 
-echo "✅ Entrenamiento completado con éxito."
+# Verify critical modules
+echo "✅ Verifying essential packages..."
+python -c "import fastapi, pandas, catboost, mlforecast; print('All packages available')"
 
-echo "----------------------------------------------------------"
-echo "📡 PASO 2: Lanzando API de Inferencia (FastAPI)"
-echo "----------------------------------------------------------"
-# Lanzamos FastAPI en el puerto 8000 en segundo plano (&)
-# Usamos 'python -m' para asegurar que el PYTHONPATH sea correcto
-uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+# ==========================================
+# START FASTAPI (Background)
+# ==========================================
+echo ""
+echo "📡 Starting FastAPI server on port 8000..."
+uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --log-level info &
+API_PID=$!
+echo "API running with PID: $API_PID"
 
-# Esperamos unos segundos para que MLflow y FastAPI carguen el modelo en memoria
-echo "⏳ Esperando a que el modelo cargue en la API..."
+# Wait for API to start
+echo "⏳ Waiting for API initialization (10 seconds)..."
 sleep 10
 
-echo "----------------------------------------------------------"
-echo "📊 PASO 3: Lanzando Dashboard (Streamlit)"
-echo "----------------------------------------------------------"
-# Streamlit DEBE ir en el puerto 7860 para que Hugging Face lo muestre
-# No usamos '&' aquí porque queremos que este proceso mantenga vivo el contenedor
-streamlit run src/app/dashboard.py --server.port 7860 --server.address 0.0.0.0
+# Health check
+echo "🏥 Checking API health..."
+for i in {1..5}; do
+    if curl -f http://localhost:8000/health > /dev/null 2>&1; then
+        echo "✅ API is healthy!"
+        break
+    fi
+    if [ $i -eq 5 ]; then
+        echo "❌ API health check failed after 5 attempts"
+        kill $API_PID 2>/dev/null || true
+        exit 1
+    fi
+    echo "   Retry $i/5... (waiting 2 seconds)"
+    sleep 2
+done
+
+# ==========================================
+# START STREAMLIT DASHBOARD (Foreground)
+# ==========================================
+echo ""
+echo "📊 Starting Streamlit dashboard on port 7860..."
+echo "================================"
+
+# Streamlit config for production
+export STREAMLIT_SERVER_HEADLESS=true
+export STREAMLIT_SERVER_PORT=7860
+export STREAMLIT_SERVER_ADDRESS=0.0.0.0
+export STREAMLIT_LOGGER_LEVEL=info
+export STREAMLIT_CLIENT_SHOWERRORDETAILS=false
+
+# Run Streamlit in foreground (Docker will monitor this)
+streamlit run src/app/dashboard.py
+
+# Cleanup on exit
+trap "kill $API_PID 2>/dev/null || true" EXIT
