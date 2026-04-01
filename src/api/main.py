@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 import requests
 import warnings
 import time
@@ -262,8 +263,33 @@ def predict(request: PredictRequest):
     try:
         # Validate model availability
         if model is None:
-            api_logger.error(f"[{req_id}] Model not available")
+            api_logger.warning(f"[{req_id}] Model not available - returning demo predictions")
             duration_ms = (time.time() - start_time) * 1000
+            
+            # Generate demo/sample predictions for demonstration
+            demo_data = []
+            base_demand = 32000 if request.country == "ES" else 28000 if request.country == "FR" else 35000 if request.country == "DE" else 27000
+            
+            from datetime import timedelta
+            now = datetime.utcnow()
+            for hour in range(1, request.horizon + 1):
+                ts = (now + timedelta(hours=hour)).isoformat()
+                # Simple sinusoidal pattern for demo
+                variation = 5000 * (1 + 0.5 * np.sin(hour * 3.14159 / 12))
+                point_forecast = base_demand + variation
+                
+                forecast_point = {
+                    "timestamp": ts,
+                    "demand_mw": round(point_forecast, 2),
+                }
+                
+                # Add confidence intervals if requested
+                for level in (request.levels or settings.DEFAULT_CONFIDENCE_LEVELS):
+                    margin = (100 - level) / 100 * 3000
+                    forecast_point[f"forecast_{level}"] = round(point_forecast - margin, 2)
+                
+                demo_data.append(forecast_point)
+            
             metrics_collector.record(PredictionMetrics(
                 request_id=req_id,
                 country=request.country,
@@ -271,14 +297,19 @@ def predict(request: PredictRequest):
                 latency_ms=duration_ms,
                 cache_hit=False,
                 model_available=False,
-                status="model_unavailable",
+                status="demo_mode",
                 timestamp=datetime.utcnow(),
-                error_message="Model not loaded"
+                error_message="Model not available - using demo data"
             ))
-            raise HTTPException(
-                status_code=503,
-                detail="Model is not available. Service temporarily unavailable."
-            )
+            
+            return {
+                "status": "demo",
+                "country": request.country,
+                "horizon_hours": request.horizon,
+                "forecast_timestamp": datetime.utcnow().isoformat(),
+                "data": demo_data,
+                "message": "⚠️ Demo mode: Model not available. Train a model to get real predictions. See /docs for API details."
+            }
 
         # Create template for future dates
         expected_df = model.make_future_dataframe(h=request.horizon)
