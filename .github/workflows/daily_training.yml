@@ -1,15 +1,15 @@
-name: Entrenamiento Diario (MLOps)
+name: 📊 Ingesta Diaria de Datos
 
 on:
   schedule:
-    - cron: '0 2 * * *'
-  workflow_dispatch:
+    - cron: '0 2 * * *' # 02:00 AM UTC
+  workflow_dispatch: # Botón manual
 
 jobs:
-  train-and-deploy:
+  ingest-and-process:
     runs-on: ubuntu-latest
     steps:
-      - name: 📥 Clonar el repositorio
+      - name: 📥 Clonar repositorio
         uses: actions/checkout@v3
 
       - name: 🐍 Configurar Python
@@ -21,29 +21,37 @@ jobs:
       - name: 📦 Instalar dependencias
         run: pip install -r requirements.txt
 
-      # 🎯 NUEVO: Creamos el archivo de credenciales de Google al vuelo
+      - name: ⚙️ Ejecutar Ingesta y Procesamiento
+        env:
+          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }}
+          PYTHONPATH: src
+        run: |
+          echo "Descargando datos..."
+          python src/data_ingestion/ingest.py
+          echo "Procesando features..."
+          python src/data_processing/process.py
+
+      # 🎯 NUEVO: Autenticación segura con Google Cloud
       - name: 🔐 Configurar Credenciales GCP
         run: |
           echo '${{ secrets.GCP_CREDENTIALS_JSON }}' > credenciales-gcp.json
 
-      - name: ⚙️ Ejecutar Pipeline Completo
+      # 🎯 NUEVO: Subida al Bucket de Google en lugar de HF
+      - name: ☁️ Subir datos procesados a GCP
         env:
-          ENTSOE_API_KEY: ${{ secrets.ENTSOE_API_KEY }} 
-          PYTHONPATH: src
-          # 🎯 NUEVO: Le decimos a Python dónde está la llave de Google y el Bucket
           GOOGLE_APPLICATION_CREDENTIALS: credenciales-gcp.json
-          MODEL_BUCKET_NAME: electric-demand-models-bucket
         run: |
-          echo "1. Descargando datos recientes..."
-          python src/data_ingestion/ingest.py
+          echo "Subiendo dataset procesado a GCP Storage..."
+          # Autenticamos al "robot"
+          gcloud auth activate-service-account --key-file=credenciales-gcp.json
           
-          echo "2. Procesando datos..."
-          python src/data_processing/process.py
+          # Copiamos el archivo al bucket
+          gcloud storage cp data/processed/features_clean.parquet gs://electric-demand-models-bucket/data/features_clean.parquet
           
-          echo "3. Entrenando modelo CatBoost..."
-          python src/training/train.py
+          echo "✅ ¡Datos listos en Google Cloud para el entrenamiento!"
 
-      - name: 🚀 Enviar Modelo a Hugging Face
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: python src/utils/upload_to_hf.py
+      # Opcional: Si por algún motivo aún necesitas subir algo a HF, puedes dejar el paso anterior
+      # - name: 🚀 Subir datos procesados al Space
+      #   env:
+      #     HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      #   run: python src/utils/upload_to_hf.py
